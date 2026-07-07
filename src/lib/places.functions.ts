@@ -59,7 +59,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
 export const getPlaceDetails = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => DetailsInput.parse(input))
   .handler(async ({ data }) => {
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error("Business search is not configured yet.");
 
     const res = await fetch(
