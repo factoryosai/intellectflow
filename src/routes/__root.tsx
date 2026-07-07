@@ -94,7 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Collect more genuine Google reviews. Customers scan your QR code and AI helps them write and post a review from their own account in seconds.",
       },
       { name: "author", content: "IntellectFlow" },
-      { property: "og:title", content: "IntellectFlow Reviews" },
+      { property: "og:title", content: "IntellectFlow Reviews — Automate Everything. Miss Nothing." },
       {
         property: "og:description",
         content:
@@ -102,6 +102,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "IntellectFlow Reviews — Automate Everything. Miss Nothing." },
+      { name: "description", content: "Collect more genuine Google reviews. Customers scan your QR code and AI helps them write and post a review from their own account in seconds." },
+      { property: "og:description", content: "Collect more genuine Google reviews. Customers scan your QR code and AI helps them write and post a review from their own account in seconds." },
+      { name: "twitter:description", content: "Collect more genuine Google reviews. Customers scan your QR code and AI helps them write and post a review from their own account in seconds." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a90166bf-8dec-4036-9758-21e2742bed76" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a90166bf-8dec-4036-9758-21e2742bed76" },
     ],
     links: [
       {
