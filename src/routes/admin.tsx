@@ -146,11 +146,16 @@ function Admin() {
             <Logo />
             <Badge variant="secondary">Admin</Badge>
           </div>
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" /> Dashboard
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin-users">Manage users</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/dashboard">
+                <ArrowLeft className="h-4 w-4" /> Dashboard
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 
