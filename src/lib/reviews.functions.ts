@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { isPlanActive } from "@/lib/brand";
 
 const SlugInput = z.object({ slug: z.string().min(1).max(64) });
 const LogInput = z.object({
