@@ -61,7 +61,11 @@ function Dashboard() {
 
   const business = data.business;
   const sub = data.subscription;
-  const active = sub?.status === "active";
+  const active = isPlanActive(sub?.status, sub?.current_period_end);
+  const onTrial = sub?.status === "trialing" && active;
+  const trialDaysLeft = onTrial && sub?.current_period_end
+    ? Math.max(0, Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86400000))
+    : 0;
   const reviewUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/r/${business.slug}`;
 
   const saveEdits = async () => {
