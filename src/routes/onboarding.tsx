@@ -32,8 +32,13 @@ function Onboarding() {
     address: string;
     location_lat: number | null;
     location_lng: number | null;
+    website: string | null;
+    rating: number | null;
+    user_ratings_total: number | null;
+    logo_url: string | null;
   } | null>(null);
   const [contact, setContact] = useState("");
+  const [description, setDescription] = useState("");
   const [reviewLink, setReviewLink] = useState("");
   const [saving, setSaving] = useState(false);
 
