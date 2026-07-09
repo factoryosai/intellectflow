@@ -74,8 +74,13 @@ function Onboarding() {
         address: details.address,
         location_lat: details.lat,
         location_lng: details.lng,
+        website: details.website || null,
+        rating: details.rating,
+        user_ratings_total: details.userRatingsTotal,
+        logo_url: details.logoUrl,
       });
       setReviewLink(details.googleReviewLink);
+      if (details.phone) setContact(details.phone);
       setPredictions([]);
       setQuery(details.name);
     } catch (e) {
