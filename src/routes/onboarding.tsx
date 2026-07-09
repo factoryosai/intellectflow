@@ -104,6 +104,11 @@ function Onboarding() {
           location_lng: selected.location_lng,
           contact_number: contact || null,
           google_review_link: reviewLink.trim(),
+          website: selected.website,
+          description: description || null,
+          logo_url: selected.logo_url,
+          rating: selected.rating,
+          user_ratings_total: selected.user_ratings_total,
         })
         .eq("id", data.business.id);
       if (error) throw error;
