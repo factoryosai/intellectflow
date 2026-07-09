@@ -17,6 +17,19 @@ export interface PlaceDetails {
   lat: number | null;
   lng: number | null;
   googleReviewLink: string;
+  phone: string;
+  website: string;
+  rating: number | null;
+  userRatingsTotal: number | null;
+  logoUrl: string | null;
+}
+
+function domainFromUrl(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }
 
 export const searchPlaces = createServerFn({ method: "POST" })
