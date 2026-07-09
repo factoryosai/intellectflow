@@ -20,39 +20,54 @@ export type Database = {
           business_name: string | null
           contact_number: string | null
           created_at: string
+          description: string | null
           google_review_link: string | null
           id: string
           location_lat: number | null
           location_lng: number | null
+          logo_url: string | null
           place_id: string | null
+          rating: number | null
           slug: string | null
           user_id: string
+          user_ratings_total: number | null
+          website: string | null
         }
         Insert: {
           address?: string | null
           business_name?: string | null
           contact_number?: string | null
           created_at?: string
+          description?: string | null
           google_review_link?: string | null
           id?: string
           location_lat?: number | null
           location_lng?: number | null
+          logo_url?: string | null
           place_id?: string | null
+          rating?: number | null
           slug?: string | null
           user_id: string
+          user_ratings_total?: number | null
+          website?: string | null
         }
         Update: {
           address?: string | null
           business_name?: string | null
           contact_number?: string | null
           created_at?: string
+          description?: string | null
           google_review_link?: string | null
           id?: string
           location_lat?: number | null
           location_lng?: number | null
+          logo_url?: string | null
           place_id?: string | null
+          rating?: number | null
           slug?: string | null
           user_id?: string
+          user_ratings_total?: number | null
+          website?: string | null
         }
         Relationships: [
           {
