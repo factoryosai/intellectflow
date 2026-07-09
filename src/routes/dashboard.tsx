@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useBusiness, isOnboarded } from "@/lib/useBusiness";
-import { PLAN_MAP } from "@/lib/brand";
+import { PLAN_MAP, isPlanActive } from "@/lib/brand";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
