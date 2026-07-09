@@ -17,6 +17,19 @@ export interface PlaceDetails {
   lat: number | null;
   lng: number | null;
   googleReviewLink: string;
+  phone: string;
+  website: string;
+  rating: number | null;
+  userRatingsTotal: number | null;
+  logoUrl: string | null;
+}
+
+function domainFromUrl(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }
 
 export const searchPlaces = createServerFn({ method: "POST" })
@@ -68,7 +81,7 @@ export const getPlaceDetails = createServerFn({ method: "POST" })
         headers: {
           "X-Goog-Api-Key": apiKey,
           "X-Goog-FieldMask":
-            "id,displayName,formattedAddress,location,googleMapsUri",
+            "id,displayName,formattedAddress,location,googleMapsUri,internationalPhoneNumber,nationalPhoneNumber,websiteUri,rating,userRatingCount,editorialSummary",
         },
       },
     );
@@ -80,6 +93,9 @@ export const getPlaceDetails = createServerFn({ method: "POST" })
     }
 
     const json = await res.json();
+    const website: string = json.websiteUri ?? "";
+    const domain = website ? domainFromUrl(website) : null;
+    const logoKey = process.env.VITE_LOVABLE_CONNECTOR_LOGO_DEV_API_KEY;
     const details: PlaceDetails = {
       placeId: json.id ?? data.placeId,
       name: json.displayName?.text ?? "",
@@ -88,6 +104,16 @@ export const getPlaceDetails = createServerFn({ method: "POST" })
       lng: json.location?.longitude ?? null,
       // Prefetch a sensible default Google review link; owner can override.
       googleReviewLink: `https://search.google.com/local/writereview?placeid=${json.id ?? data.placeId}`,
+      phone: json.internationalPhoneNumber ?? json.nationalPhoneNumber ?? "",
+      website,
+      rating: typeof json.rating === "number" ? json.rating : null,
+      userRatingsTotal:
+        typeof json.userRatingCount === "number" ? json.userRatingCount : null,
+      logoUrl:
+        domain && logoKey
+          ? `https://img.logo.dev/${domain}?token=${logoKey}&size=200&format=png`
+          : null,
     };
     return { details };
+
   });

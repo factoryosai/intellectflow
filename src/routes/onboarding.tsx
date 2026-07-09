@@ -32,8 +32,13 @@ function Onboarding() {
     address: string;
     location_lat: number | null;
     location_lng: number | null;
+    website: string | null;
+    rating: number | null;
+    user_ratings_total: number | null;
+    logo_url: string | null;
   } | null>(null);
   const [contact, setContact] = useState("");
+  const [description, setDescription] = useState("");
   const [reviewLink, setReviewLink] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -69,8 +74,13 @@ function Onboarding() {
         address: details.address,
         location_lat: details.lat,
         location_lng: details.lng,
+        website: details.website || null,
+        rating: details.rating,
+        user_ratings_total: details.userRatingsTotal,
+        logo_url: details.logoUrl,
       });
       setReviewLink(details.googleReviewLink);
+      if (details.phone) setContact(details.phone);
       setPredictions([]);
       setQuery(details.name);
     } catch (e) {
@@ -94,6 +104,11 @@ function Onboarding() {
           location_lng: selected.location_lng,
           contact_number: contact || null,
           google_review_link: reviewLink.trim(),
+          website: selected.website,
+          description: description || null,
+          logo_url: selected.logo_url,
+          rating: selected.rating,
+          user_ratings_total: selected.user_ratings_total,
         })
         .eq("id", data.business.id);
       if (error) throw error;
@@ -157,11 +172,34 @@ function Onboarding() {
             </div>
 
             {selected && (
-              <div className="flex items-start gap-2 rounded-xl border border-primary/30 bg-accent/50 p-3 text-sm">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-accent/50 p-3 text-sm">
+                {selected.logo_url ? (
+                  <img
+                    src={selected.logo_url}
+                    alt={`${selected.business_name} logo`}
+                    className="h-10 w-10 shrink-0 rounded-lg object-contain"
+                  />
+                ) : (
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                )}
                 <div>
                   <p className="font-semibold">{selected.business_name}</p>
                   <p className="text-xs text-muted-foreground">{selected.address}</p>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    {selected.rating != null && (
+                      <span>★ {selected.rating} ({selected.user_ratings_total ?? 0})</span>
+                    )}
+                    {selected.website && (
+                      <a
+                        href={selected.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        Website
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -175,6 +213,17 @@ function Onboarding() {
                 onChange={(e) => setContact(e.target.value)}
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Business description</Label>
+              <Input
+                id="description"
+                placeholder="A short line about your business"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
 
             <div className="space-y-1.5">
               <Label htmlFor="link">Your Google review link</Label>

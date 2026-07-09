@@ -7,6 +7,8 @@ export const BRAND = {
   website: "intellectflow.in",
 };
 
+export const TRIAL_DAYS = 3;
+
 export type PlanId = "starter" | "growth" | "pro";
 
 export const PLANS: {
@@ -16,17 +18,20 @@ export const PLANS: {
   tagline: string;
   features: string[];
   popular?: boolean;
+  trialDays?: number;
 }[] = [
   {
     id: "starter",
     name: "Starter",
     price: 99,
     tagline: "For solo businesses getting started",
+    trialDays: TRIAL_DAYS,
     features: [
-      "AI-written review suggestions",
-      "QR code & shareable link",
-      "Unlimited customer scans",
-      "Review activity counter",
+      "Trial Period (3 days)",
+      "AI-Powered Reviews (Unlimited)",
+      "QR Code Generation",
+      "Google Integration",
+      "Sticker Templates",
     ],
   },
   {
@@ -37,21 +42,30 @@ export const PLANS: {
     popular: true,
     features: [
       "Everything in Starter",
-      "Priority AI generation",
-      "Downloadable QR (PNG & SVG)",
-      "Editable business profile",
+      "QR Code Generation",
+      "Google Integration",
+      "All Sticker Templates",
+      "Free Logo Design",
+      "1 Standee + 3 Stickers",
+      "Priority Support",
     ],
   },
   {
     id: "pro",
-    name: "Pro",
+    name: "Business",
     price: 349,
     tagline: "For established brands",
     features: [
       "Everything in Growth",
-      "Fastest AI response",
-      "Premium support",
-      "Early access to new features",
+      "1 Free Website",
+      "Website SEO",
+      "Google Business SEO",
+      "WhatsApp Chatbot",
+      "AI Assistant",
+      "AI-Powered Reviews",
+      "1 Standee + 3 Stickers",
+      "Priority Support",
+      "All upcoming Features",
     ],
   },
 ];
@@ -60,3 +74,16 @@ export const PLAN_MAP = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Recor
   PlanId,
   (typeof PLANS)[number]
 >;
+
+/** Treats both paid ("active") and in-trial ("trialing") subscriptions as active. */
+export function isPlanActive(
+  status?: string | null,
+  periodEnd?: string | null,
+): boolean {
+  if (status === "active") return true;
+  if (status === "trialing") {
+    if (!periodEnd) return true;
+    return new Date(periodEnd).getTime() > Date.now();
+  }
+  return false;
+}

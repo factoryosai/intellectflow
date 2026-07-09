@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useBusiness, isOnboarded } from "@/lib/useBusiness";
-import { PLAN_MAP } from "@/lib/brand";
+import { PLAN_MAP, isPlanActive } from "@/lib/brand";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -61,7 +61,11 @@ function Dashboard() {
 
   const business = data.business;
   const sub = data.subscription;
-  const active = sub?.status === "active";
+  const active = isPlanActive(sub?.status, sub?.current_period_end);
+  const onTrial = sub?.status === "trialing" && active;
+  const trialDaysLeft = onTrial && sub?.current_period_end
+    ? Math.max(0, Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86400000))
+    : 0;
   const reviewUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/r/${business.slug}`;
 
   const saveEdits = async () => {
@@ -112,6 +116,25 @@ function Dashboard() {
           {business.business_name}
         </h1>
         <p className="text-sm text-muted-foreground">{business.address}</p>
+
+        {onTrial && (
+          <div className="mt-5 flex flex-col items-start justify-between gap-3 rounded-2xl border border-primary/30 bg-gradient-brand/10 p-5 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <p className="font-bold">
+                  Free trial active — {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"} left
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You're on the Starter trial. Pick a plan to keep collecting reviews after it ends.
+                </p>
+              </div>
+            </div>
+            <Button asChild variant="hero">
+              <Link to="/pricing">Choose a plan</Link>
+            </Button>
+          </div>
+        )}
 
         {!active && (
           <div className="mt-5 flex flex-col items-start justify-between gap-3 rounded-2xl border border-primary/30 bg-accent/40 p-5 sm:flex-row sm:items-center">
