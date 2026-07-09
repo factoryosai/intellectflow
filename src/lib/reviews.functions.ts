@@ -32,14 +32,14 @@ export const generateReviews = createServerFn({ method: "POST" })
       throw new Error("Business not found");
     }
 
-    // Check subscription status — only active businesses serve suggestions
+    // Check subscription status — active or in-trial businesses serve suggestions
     const { data: sub } = await supabaseAdmin
       .from("subscriptions")
-      .select("status")
+      .select("status, current_period_end")
       .eq("business_id", business.id)
       .maybeSingle();
 
-    const active = sub?.status === "active";
+    const active = isPlanActive(sub?.status, sub?.current_period_end);
     const info: PublicBusiness = {
       business_name: business.business_name,
       google_review_link: business.google_review_link,
