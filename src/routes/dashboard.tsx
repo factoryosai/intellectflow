@@ -36,6 +36,8 @@ function Dashboard() {
   const [contact, setContact] = useState("");
   const [link, setLink] = useState("");
   const [saving, setSaving] = useState(false);
+  const [logoDisplay, setLogoDisplay] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/auth" });
@@ -50,6 +52,29 @@ function Dashboard() {
       setLink(data.business.google_review_link ?? "");
     }
   }, [data, navigate]);
+
+  // Resolve a display URL for the logo (http = external/logo.dev, else private storage path).
+  useEffect(() => {
+    const logo = data?.business?.logo_url;
+    if (!logo) {
+      setLogoDisplay(null);
+      return;
+    }
+    if (logo.startsWith("http")) {
+      setLogoDisplay(logo);
+      return;
+    }
+    let active = true;
+    supabase.storage
+      .from("business-assets")
+      .createSignedUrl(logo, 3600)
+      .then(({ data: signed }) => {
+        if (active) setLogoDisplay(signed?.signedUrl ?? null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [data?.business?.logo_url]);
 
   if (loading || isLoading || !data?.business) {
     return (
@@ -90,6 +115,37 @@ function Dashboard() {
     navigator.clipboard.writeText(reviewUrl);
     toast.success("Link copied");
   };
+
+  const onLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !session) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Logo must be under 5MB");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `${session.user.id}/logo-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("business-assets")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { error: dbErr } = await supabase
+        .from("businesses")
+        .update({ logo_url: path })
+        .eq("id", business.id);
+      if (dbErr) throw dbErr;
+      await refetch();
+      toast.success("Logo updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -231,7 +287,43 @@ function Dashboard() {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1.5">
+                  <Label>Business logo</Label>
+                  <div className="flex items-center gap-4">
+                    {logoDisplay ? (
+                      <img
+                        src={logoDisplay}
+                        alt="Business logo"
+                        className="h-16 w-16 rounded-xl border border-border object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-border text-xl font-black text-muted-foreground">
+                        {business.business_name?.[0]?.toUpperCase() ?? "?"}
+                      </div>
+                    )}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={onLogoChange}
+                        disabled={uploadingLogo}
+                      />
+                      <span className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent">
+                        {uploadingLogo ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
+                          </>
+                        ) : (
+                          "Upload logo"
+                        )}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
                   <Label htmlFor="c">Contact number</Label>
+
                   <Input
                     id="c"
                     value={contact}

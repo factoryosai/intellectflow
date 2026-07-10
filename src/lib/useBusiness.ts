@@ -13,6 +13,11 @@ export interface BusinessRow {
   contact_number: string | null;
   google_review_link: string | null;
   slug: string | null;
+  website: string | null;
+  description: string | null;
+  logo_url: string | null;
+  rating: number | null;
+  user_ratings_total: number | null;
   created_at: string;
 }
 
