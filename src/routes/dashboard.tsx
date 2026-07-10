@@ -36,6 +36,8 @@ function Dashboard() {
   const [contact, setContact] = useState("");
   const [link, setLink] = useState("");
   const [saving, setSaving] = useState(false);
+  const [logoDisplay, setLogoDisplay] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/auth" });
