@@ -287,6 +287,40 @@ function Dashboard() {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1.5">
+                  <Label>Business logo</Label>
+                  <div className="flex items-center gap-4">
+                    {logoDisplay ? (
+                      <img
+                        src={logoDisplay}
+                        alt="Business logo"
+                        className="h-16 w-16 rounded-xl border border-border object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-dashed border-border text-xl font-black text-muted-foreground">
+                        {business.business_name?.[0]?.toUpperCase() ?? "?"}
+                      </div>
+                    )}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={onLogoChange}
+                        disabled={uploadingLogo}
+                      />
+                      <span className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent">
+                        {uploadingLogo ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
+                          </>
+                        ) : (
+                          "Upload logo"
+                        )}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                   <Label htmlFor="c">Contact number</Label>
                   <Input
                     id="c"
