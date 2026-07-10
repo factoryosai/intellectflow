@@ -53,6 +53,29 @@ function Dashboard() {
     }
   }, [data, navigate]);
 
+  // Resolve a display URL for the logo (http = external/logo.dev, else private storage path).
+  useEffect(() => {
+    const logo = data?.business?.logo_url;
+    if (!logo) {
+      setLogoDisplay(null);
+      return;
+    }
+    if (logo.startsWith("http")) {
+      setLogoDisplay(logo);
+      return;
+    }
+    let active = true;
+    supabase.storage
+      .from("business-assets")
+      .createSignedUrl(logo, 3600)
+      .then(({ data: signed }) => {
+        if (active) setLogoDisplay(signed?.signedUrl ?? null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [data?.business?.logo_url]);
+
   if (loading || isLoading || !data?.business) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
