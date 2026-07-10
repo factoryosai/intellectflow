@@ -321,7 +321,9 @@ function Dashboard() {
                   </div>
                 </div>
 
+                <div className="space-y-1.5">
                   <Label htmlFor="c">Contact number</Label>
+
                   <Input
                     id="c"
                     value={contact}
