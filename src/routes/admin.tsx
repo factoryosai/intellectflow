@@ -1,7 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Loader2, Search, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Search,
+  ShieldAlert,
+  Building2,
+  Star,
+  Users,
+  CreditCard,
+  ExternalLink,
+  Phone,
+  Mail,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -24,28 +37,26 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { listBusinessesFull } from "@/lib/admin-users.functions";
+import { PLAN_MAP } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
-interface AdminRow {
-  id: string;
-  business_name: string | null;
-  address: string | null;
-  contact_number: string | null;
-  google_review_link: string | null;
-  created_at: string;
-  plan: string | null;
-  status: string;
-  subId: string | null;
-}
+const STATUSES = ["active", "trialing", "past_due", "cancelled"] as const;
 
-const STATUSES = ["active", "past_due", "cancelled"] as const;
+function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+  if (status === "active") return "default";
+  if (status === "trialing") return "secondary";
+  if (status === "past_due") return "destructive";
+  return "outline";
+}
 
 function Admin() {
   const navigate = useNavigate();
   const { session, loading, isAdmin } = useAuth();
+  const listFull = useServerFn(listBusinessesFull);
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -55,58 +66,41 @@ function Admin() {
   }, [loading, session, navigate]);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["admin-businesses"],
+    queryKey: ["admin-businesses-full"],
     enabled: !!session && isAdmin,
-    queryFn: async () => {
-      const { data: businesses, error } = await supabase
-        .from("businesses")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const { data: subs } = await supabase
-        .from("subscriptions")
-        .select("id, business_id, plan, status");
-      const subMap = new Map(
-        (subs ?? []).map((s) => [s.business_id, s]),
-      );
-      return (businesses ?? []).map((b): AdminRow => {
-        const s = subMap.get(b.id);
-        return {
-          id: b.id,
-          business_name: b.business_name,
-          address: b.address,
-          contact_number: b.contact_number,
-          google_review_link: b.google_review_link,
-          created_at: b.created_at,
-          plan: s?.plan ?? null,
-          status: s?.status ?? "none",
-          subId: s?.id ?? null,
-        };
-      });
-    },
+    queryFn: () => listFull(),
   });
 
   const rows = useMemo(() => {
     return (data ?? []).filter((r) => {
+      const q = search.toLowerCase();
       const matchSearch =
-        !search ||
-        (r.business_name ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (r.address ?? "").toLowerCase().includes(search.toLowerCase());
+        !q ||
+        (r.businessName ?? "").toLowerCase().includes(q) ||
+        (r.email ?? "").toLowerCase().includes(q) ||
+        (r.address ?? "").toLowerCase().includes(q) ||
+        (r.contactNumber ?? "").toLowerCase().includes(q);
       const matchPlan = planFilter === "all" || r.plan === planFilter;
       const matchStatus = statusFilter === "all" || r.status === statusFilter;
       return matchSearch && matchPlan && matchStatus;
     });
   }, [data, search, planFilter, statusFilter]);
 
-  const changeStatus = async (row: AdminRow, status: string) => {
-    if (!row.subId) {
-      toast.error("This business has no subscription record to update.");
-      return;
-    }
+  const stats = useMemo(() => {
+    const all = data ?? [];
+    return {
+      businesses: all.length,
+      active: all.filter((r) => r.status === "active" || r.status === "trialing").length,
+      reviews: all.reduce((sum, r) => sum + (r.reviewCount ?? 0), 0),
+      paying: all.filter((r) => r.status === "active").length,
+    };
+  }, [data]);
+
+  const changeStatus = async (businessId: string, status: string) => {
     const { error } = await supabase
       .from("subscriptions")
       .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", row.subId);
+      .eq("business_id", businessId);
     if (error) {
       toast.error(error.message);
       return;
@@ -114,6 +108,8 @@ function Admin() {
     toast.success("Status updated");
     refetch();
   };
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   if (loading) {
     return (
@@ -160,17 +156,25 @@ function Admin() {
       </header>
 
       <main className="mx-auto max-w-7xl px-5 py-8">
-        <h1 className="text-2xl font-black tracking-tight">All businesses</h1>
+        <h1 className="text-2xl font-black tracking-tight">Admin dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          {rows.length} of {data?.length ?? 0} shown
+          Full overview of every business, owner, and subscription.
         </p>
 
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        {/* Stat cards */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon={Building2} label="Businesses" value={stats.businesses} />
+          <StatCard icon={Users} label="Active accounts" value={stats.active} />
+          <StatCard icon={CreditCard} label="Paying" value={stats.paying} />
+          <StatCard icon={Star} label="Reviews driven" value={stats.reviews} />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search by name or location"
+              placeholder="Search name, email, phone or location"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -183,7 +187,7 @@ function Admin() {
               <SelectItem value="all">All plans</SelectItem>
               <SelectItem value="starter">Starter</SelectItem>
               <SelectItem value="growth">Growth</SelectItem>
-              <SelectItem value="pro">Pro</SelectItem>
+              <SelectItem value="pro">Business</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -193,6 +197,7 @@ function Admin() {
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="trialing">Trialing</SelectItem>
               <SelectItem value="past_due">Past due</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
               <SelectItem value="none">No subscription</SelectItem>
@@ -200,7 +205,11 @@ function Admin() {
           </Select>
         </div>
 
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-border bg-card">
+        <p className="mt-3 text-sm text-muted-foreground">
+          {rows.length} of {data?.length ?? 0} shown
+        </p>
+
+        <div className="mt-3 overflow-x-auto rounded-2xl border border-border bg-card">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -210,57 +219,111 @@ function Admin() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Business</TableHead>
+                  <TableHead>Owner</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead>Google rating</TableHead>
+                  <TableHead>Reviews driven</TableHead>
+                  <TableHead>Review page</TableHead>
                   <TableHead>Plan</TableHead>
-                  <TableHead>Signed up</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-semibold">
-                      {r.business_name || <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="max-w-48 truncate text-muted-foreground">
-                      {r.address || "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {r.contact_number || "—"}
-                    </TableCell>
-                    <TableCell className="capitalize">{r.plan || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={r.status}
-                        onValueChange={(v) => changeStatus(r, v)}
-                        disabled={!r.subId}
-                      >
-                        <SelectTrigger className="h-8 w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {r.status === "none" && (
-                            <SelectItem value="none" disabled>
-                              none
-                            </SelectItem>
+                {rows.map((r) => {
+                  const reviewUrl = r.slug ? `${origin}/r/${r.slug}` : null;
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell className="align-top">
+                        <div className="font-semibold">
+                          {r.businessName || (
+                            <span className="text-muted-foreground">— not set —</span>
                           )}
-                          {STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Joined {new Date(r.createdAt).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          {r.email || "—"}
+                        </div>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          {r.contactNumber || "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-48 align-top text-xs text-muted-foreground">
+                        {r.address || "—"}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        {r.rating != null ? (
+                          <div className="flex items-center gap-1 text-sm font-semibold">
+                            <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                            {r.rating}
+                            <span className="text-xs font-normal text-muted-foreground">
+                              ({r.userRatingsTotal ?? 0})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top font-semibold">
+                        {r.reviewCount}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        {reviewUrl ? (
+                          <a
+                            href={reviewUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            /r/{r.slug} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        {r.plan ? (
+                          <Badge variant="outline">
+                            {PLAN_MAP[r.plan as keyof typeof PLAN_MAP]?.name ?? r.plan}
+                          </Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <Select
+                          value={r.status === "none" ? undefined : r.status}
+                          onValueChange={(v) => changeStatus(r.id, v)}
+                        >
+                          <SelectTrigger className="h-8 w-32">
+                            <SelectValue
+                              placeholder={
+                                <Badge variant="outline">none</Badge>
+                              }
+                            >
+                              <Badge variant={statusVariant(r.status)}>{r.status}</Badge>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUSES.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {s}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                       No businesses match your filters.
                     </TableCell>
                   </TableRow>
@@ -270,6 +333,26 @@ function Admin() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Building2;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-4 w-4 text-primary" />
+        <span className="text-sm font-medium">{label}</span>
+      </div>
+      <p className="text-3xl font-black text-gradient-brand">{value}</p>
     </div>
   );
 }
