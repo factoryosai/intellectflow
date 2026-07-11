@@ -60,8 +60,18 @@ function Pricing() {
         notes: { business: businessName },
         handler: async () => {
           toast.success("Payment received! Activating your plan…");
-          setTimeout(() => refetch(), 2500);
           navigate({ to: "/dashboard" });
+          // Poll a few times so the newly activated plan shows without a manual refresh.
+          let tries = 0;
+          const poll = setInterval(async () => {
+            tries += 1;
+            const res = await refetch();
+            const status = res.data?.subscription?.status;
+            if (status === "active" || tries >= 6) {
+              clearInterval(poll);
+              if (status === "active") toast.success("Your plan is now active!");
+            }
+          }, 2500);
         },
         modal: {
           ondismiss: () => setBusy(null),
