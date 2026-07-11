@@ -45,6 +45,70 @@ export const listUsers = createServerFn({ method: "GET" })
     );
   });
 
+/**
+ * Full admin overview: every business joined with owner email, subscription
+ * plan/status, ratings, and the count of AI-driven review events.
+ */
+export const listBusinessesFull = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+
+    const [
+      { data: businesses, error: bizErr },
+      { data: profiles },
+      { data: subs },
+      { data: events },
+    ] = await Promise.all([
+      context.supabase
+        .from("businesses")
+        .select(
+          "id, user_id, business_name, address, contact_number, website, description, google_review_link, slug, rating, user_ratings_total, logo_url, created_at",
+        )
+        .order("created_at", { ascending: false }),
+      context.supabase.from("profiles").select("id, email"),
+      context.supabase
+        .from("subscriptions")
+        .select("business_id, plan, status, current_period_end"),
+      context.supabase.from("review_events").select("business_id"),
+    ]);
+    if (bizErr) throw new Error(bizErr.message);
+
+    const emailMap = new Map(
+      (profiles ?? []).map((p: { id: string; email: string | null }) => [p.id, p.email]),
+    );
+    const subMap = new Map(
+      (subs ?? []).map((s: { business_id: string }) => [s.business_id, s]),
+    );
+    const reviewCounts = new Map<string, number>();
+    for (const e of (events ?? []) as { business_id: string }[]) {
+      reviewCounts.set(e.business_id, (reviewCounts.get(e.business_id) ?? 0) + 1);
+    }
+
+    return (businesses ?? []).map((b: any) => {
+      const s: any = subMap.get(b.id);
+      return {
+        id: b.id,
+        userId: b.user_id,
+        email: emailMap.get(b.user_id) ?? null,
+        businessName: b.business_name,
+        address: b.address,
+        contactNumber: b.contact_number,
+        website: b.website,
+        description: b.description,
+        googleReviewLink: b.google_review_link,
+        slug: b.slug,
+        rating: b.rating,
+        userRatingsTotal: b.user_ratings_total,
+        createdAt: b.created_at,
+        plan: s?.plan ?? null,
+        status: s?.status ?? "none",
+        currentPeriodEnd: s?.current_period_end ?? null,
+        reviewCount: reviewCounts.get(b.id) ?? 0,
+      };
+    });
+  });
+
 const SetAdminInput = z.object({
   userId: z.string().uuid(),
   makeAdmin: z.boolean(),
