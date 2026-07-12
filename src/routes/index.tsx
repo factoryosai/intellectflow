@@ -404,11 +404,13 @@ function Index() {
             The team building IntellectFlow, on a mission to help local
             businesses win more customers.
           </p>
-          <div className="mx-auto mt-10 grid max-w-xl gap-5 sm:grid-cols-2">
+          <div className="mx-auto mt-10 max-w-sm">
             <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
-              <div className="bg-gradient-brand flex h-24 w-24 items-center justify-center rounded-full text-2xl font-black text-primary-foreground">
-                KS
-              </div>
+              <img
+                src={founderPhoto.url}
+                alt="Kaushik Savaliya, Co-Founder of IntellectFlow"
+                className="h-32 w-32 rounded-full object-cover object-top"
+              />
               <h3 className="mt-5 text-lg font-bold">Kaushik Savaliya</h3>
               <p className="mt-1 text-sm font-semibold text-gradient-brand">
                 Co-Founder
