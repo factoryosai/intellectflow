@@ -7,6 +7,14 @@ export const BRAND = {
   website: "intellectflow.in",
 };
 
+/** Digits-only phone for wa.me links. */
+export const WHATSAPP_NUMBER = "917069525795";
+export const WHATSAPP_MESSAGE =
+  "Hi IntellectFlow! I'd like to know more about getting more Google reviews for my business.";
+export const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  WHATSAPP_MESSAGE,
+)}`;
+
 export const TRIAL_DAYS = 3;
 
 export type PlanId = "starter" | "growth" | "pro";
