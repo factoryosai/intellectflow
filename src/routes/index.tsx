@@ -16,6 +16,9 @@ import {
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { BRAND, PLANS } from "@/lib/brand";
+import { SiteFooter } from "@/components/SiteFooter";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
+import founderPhoto from "@/assets/kaushik-savaliya.png.asset.json";
 
 const SITE_URL = "https://intellectflow.lovable.app";
 
