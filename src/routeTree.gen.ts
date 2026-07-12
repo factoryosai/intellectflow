@@ -13,6 +13,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminUsersRouteImport } from './routes/admin-users'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -39,6 +40,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/admin-users': typeof AdminUsersRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/admin-users': typeof AdminUsersRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/admin-users': typeof AdminUsersRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/pricing': typeof PricingRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-users'
     | '/auth'
+    | '/contact'
     | '/dashboard'
     | '/onboarding'
     | '/pricing'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-users'
     | '/auth'
+    | '/contact'
     | '/dashboard'
     | '/onboarding'
     | '/pricing'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin-users'
     | '/auth'
+    | '/contact'
     | '/dashboard'
     | '/onboarding'
     | '/pricing'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AuthRoute: typeof AuthRoute
+  ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
   OnboardingRoute: typeof OnboardingRoute
   PricingRoute: typeof PricingRoute
@@ -202,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdminUsersRoute: AdminUsersRoute,
   AuthRoute: AuthRoute,
+  ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
   OnboardingRoute: OnboardingRoute,
   PricingRoute: PricingRoute,
