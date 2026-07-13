@@ -209,6 +209,64 @@ function Admin() {
           <StatCard icon={TrendingUp} label="Reviews driven" value={stats.reviews} />
         </div>
 
+        {/* Quick actions */}
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <Loader2 className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold">Refresh</span>
+              <span className="block truncate text-xs text-muted-foreground">Reload latest data</span>
+            </span>
+          </button>
+          <Link
+            to="/admin-users"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <Users className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold">Manage users</span>
+              <span className="block truncate text-xs text-muted-foreground">Roles &amp; access</span>
+            </span>
+          </Link>
+          <button
+            onClick={() => {
+              setStatusFilter("active");
+              setPlanFilter("all");
+            }}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <CreditCard className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold">Paying only</span>
+              <span className="block truncate text-xs text-muted-foreground">Filter active subs</span>
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setStatusFilter("trialing");
+              setPlanFilter("all");
+            }}
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <Star className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold">Trials</span>
+              <span className="block truncate text-xs text-muted-foreground">Filter trialing</span>
+            </span>
+          </button>
+        </div>
+
         {/* Filters */}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">

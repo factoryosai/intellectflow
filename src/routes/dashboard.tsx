@@ -150,30 +150,95 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-muted/40 to-background">
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-lg">
-        <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-5 sm:py-4">
-          <div className="flex min-w-0 items-center">
-            <Logo />
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {isAdmin && (
-              <Button asChild variant="outline" size="sm">
-                <Link to="/admin">
-                  <ShieldCheck className="h-4 w-4" /> <span className="hidden sm:inline">Admin</span>
-                </Link>
+        <div className="mx-auto max-w-5xl px-4 py-3 sm:px-5 sm:py-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="flex min-w-0 items-center">
+              <Logo />
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {isAdmin && (
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/admin">
+                    <ShieldCheck className="h-4 w-4" /> <span className="hidden sm:inline">Admin</span>
+                  </Link>
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => signOut()}>
+                <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Log out</span>
               </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => signOut()}>
-              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Log out</span>
-            </Button>
+            </div>
+          </div>
+
+          {/* Sticky summary strip */}
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border/60 pt-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black tracking-tight sm:text-base">
+                {business.business_name}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{business.address}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-bold">
+                <Star className="h-3.5 w-3.5 text-primary" />
+                {data.reviewCount}
+              </span>
+              <Badge
+                variant={active ? "default" : "secondary"}
+                className={active ? "bg-gradient-brand text-primary-foreground" : ""}
+              >
+                {sub?.status ?? "none"}
+              </Badge>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-5 py-8">
-        <h1 className="text-2xl font-black tracking-tight">
-          {business.business_name}
-        </h1>
-        <p className="text-sm text-muted-foreground">{business.address}</p>
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <button
+            onClick={copyLink}
+            className="group flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <Copy className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-bold">Copy link</span>
+            <span className="text-xs text-muted-foreground">Share your review page</span>
+          </button>
+          <a
+            href={reviewUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="group flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <ExternalLink className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-bold">Open page</span>
+            <span className="text-xs text-muted-foreground">Preview what customers see</span>
+          </a>
+          <Link
+            to="/pricing"
+            className="group flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-bold">{active ? "Manage plan" : "Upgrade"}</span>
+            <span className="text-xs text-muted-foreground">Plans &amp; billing</span>
+          </Link>
+          <button
+            onClick={() => setEditing(true)}
+            className="group flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-primary/50 hover:shadow-md"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
+              <Pencil className="h-4 w-4" />
+            </span>
+            <span className="text-sm font-bold">Edit details</span>
+            <span className="text-xs text-muted-foreground">Update your info</span>
+          </button>
+        </div>
 
         {onTrial && (
           <div className="mt-5 flex flex-col items-start justify-between gap-3 rounded-2xl border border-primary/30 bg-gradient-brand/10 p-5 sm:flex-row sm:items-center">
