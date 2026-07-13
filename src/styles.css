@@ -45,8 +45,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Nunito", "Montserrat", ui-sans-serif, system-ui, sans-serif;
 
   --gradient-brand: linear-gradient(135deg, var(--brand-violet), var(--brand-blue));
   --shadow-brand: 0 20px 45px -20px var(--brand-violet-shadow);

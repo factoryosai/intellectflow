@@ -148,20 +148,22 @@ function Dashboard() {
 
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-          <Logo />
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-gradient-to-b from-muted/40 to-background">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-lg">
+        <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-5 sm:py-4">
+          <div className="flex min-w-0 items-center">
+            <Logo />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             {isAdmin && (
               <Button asChild variant="outline" size="sm">
                 <Link to="/admin">
-                  <ShieldCheck className="h-4 w-4" /> Admin
+                  <ShieldCheck className="h-4 w-4" /> <span className="hidden sm:inline">Admin</span>
                 </Link>
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => signOut()}>
-              <LogOut className="h-4 w-4" /> Log out
+              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Log out</span>
             </Button>
           </div>
         </div>
