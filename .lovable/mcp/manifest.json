@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://hsomqzjcjkigqaykcvqd.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "intellectflow-reviews-mcp",
+      "version": "0.1.0",
+      "title": "IntellectFlow Reviews MCP"
+    },
+    "tools": [
+      {
+        "name": "list_businesses",
+        "title": "List businesses",
+        "description": "List the review-collection businesses owned by the signed-in user, with name, address, Google rating, review page slug, and total ratings.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_business_stats",
+        "title": "Get business stats",
+        "description": "Get review-collection stats for one of the signed-in user's businesses: total review events, recent events, subscription plan and status. Pass the business id from list_businesses.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "business_id": {
+              "type": "string",
+              "description": "The id of a business owned by the signed-in user."
+            }
+          },
+          "required": [
+            "business_id"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
