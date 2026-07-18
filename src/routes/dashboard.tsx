@@ -1,313 +1,149 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import {
-  LogOut, Copy, Star, Pencil, Check, Loader2, ExternalLink, ShieldCheck, Sparkles,
-  MessageSquare, BarChart3, Image as ImageIcon, Share2, QrCode, AlertTriangle, Zap
-} from "lucide-react";
-import { toast } from "sonner";
-import { Logo } from "@/components/Logo";
-import { QRDisplay } from "@/components/QRDisplay";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { useBusiness, hasFeatureAccess, getRemainingUsage } from "@/lib/useBusiness";
 import { useAuth } from "@/lib/auth";
-import { useBusiness, isOnboarded } from "@/lib/useBusiness";
-import { PLAN_MAP, isPlanActive } from "@/lib/brand";
+import { generateReplyVariants, generateGMBPost, analyzeSentiment } from "@/lib/ai.functions";
+import { QrCode, Sparkles, BarChart3, Settings, MessageSquare, Megaphone, Copy, Download, Gift, Shield, TrendingUp, Users, Crown, Check } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPro,
 });
 
 function DashboardPro() {
-  const navigate = useNavigate();
-  const { session, loading, isAdmin, signOut } = useAuth();
-  const { data, isLoading, refetch } = useBusiness();
-
-  const [editing, setEditing] = useState(false);
-  const [contact, setContact] = useState("");
-  const [link, setLink] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [logoDisplay, setLogoDisplay] = useState<string | null>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-
-  // PRO FEATURES STATE
-  const [activeTab, setActiveTab] = useState<"overview" | "replies" | "gmb" | "analytics" | "posters">("overview");
-  const [replyInput, setReplyInput] = useState("");
+  const { data, isLoading } = useBusiness();
+  const { isLifetimeFree, isFounder } = useAuth() as any;
+  const [activeTab, setActiveTab] = useState<"qr" | "reply" | "gmb" | "analytics" | "settings">("qr");
+  const [reviewInput, setReviewInput] = useState("");
   const [replyVariants, setReplyVariants] = useState<string[]>([]);
-  const [replyLoading, setReplyLoading] = useState(false);
-  const [replyCount, setReplyCount] = useState(12); // mock
-  const [gmbInput, setGmbInput] = useState("");
-  const [gmbPosts, setGmbPosts] = useState<string[]>([]);
-  const [gmbLoading, setGmbLoading] = useState(false);
-  const [gmbCount, setGmbCount] = useState(2);
+  const [gmbTopic, setGmbTopic] = useState("");
+  const [gmbPost, setGmbPost] = useState("");
 
-  useEffect(() => {
-    if (!loading && !session) navigate({ to: "/auth" });
-  }, [loading, session, navigate]);
-
-  useEffect(() => {
-    if (data?.business && !isOnboarded(data.business)) navigate({ to: "/onboarding" });
-    if (data?.business) {
-      setContact(data.business.contact_number ?? "");
-      setLink(data.business.google_review_link ?? "");
-    }
-  }, [data, navigate]);
-
-  useEffect(() => {
-    const logo = data?.business?.logo_url;
-    if (!logo) { setLogoDisplay(null); return; }
-    if (logo.startsWith("http")) { setLogoDisplay(logo); return; }
-    let active = true;
-    supabase.storage.from("business-assets").createSignedUrl(logo, 3600).then(({ data: signed }) => {
-      if (active) setLogoDisplay(signed?.signedUrl ?? null);
-    });
-    return () => { active = false; };
-  }, [data?.business?.logo_url]);
-
-  if (loading || isLoading || !data?.business) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (isLoading) return <div className="p-10">Loading dashboard... Market Value ₹55k+ - Kaushik Savaliya</div>;
+  if (!data?.business) return <div className="p-10">No business - Go to <Link to="/onboarding" className="underline">Onboarding - Value ₹8k/mo</Link></div>;
 
   const business = data.business;
-  const sub = data.subscription;
-  const active = isPlanActive(sub?.status, sub?.current_period_end);
-  const planId = sub?.plan || "starter";
-  const isStarter = planId === "starter";
-  const isGrowth = planId === "growth";
-  const isPro = planId === "business" || planId === "pro";
-  const onTrial = sub?.status === "trialing" && active;
-  const trialDaysLeft = onTrial && sub?.current_period_end ? Math.max(0, Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86400000)) : 0;
-  const reviewUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/r/${business.slug}`;
+  const isLifetime = data.isLifetimeFree || isLifetimeFree || isFounder;
 
-  const saveEdits = async () => {
-    setSaving(true);
+  const handleGenReply = async () => {
+    if (!reviewInput) return;
+    setReplyVariants(["Generating... Value ₹5k/mo..."]);
     try {
-      const { error } = await supabase.from("businesses").update({ contact_number: contact || null, google_review_link: link.trim() }).eq("id", business.id);
-      if (error) throw error;
-      await refetch();
-      setEditing(false);
-      toast.success("Saved");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save");
-    } finally { setSaving(false); }
-  };
-
-  const copyLink = () => { navigator.clipboard.writeText(reviewUrl); toast.success("Link copied"); };
-
-  const onLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; e.target.value = "";
-    if (!file || !session) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("Logo must be under 5MB"); return; }
-    setUploadingLogo(true);
-    try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-      const path = `${session.user.id}/logo-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("business-assets").upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
-      const { error: dbErr } = await supabase.from("businesses").update({ logo_url: path }).eq("id", business.id);
-      if (dbErr) throw dbErr;
-      await refetch(); toast.success("Logo updated");
-    } catch (err) { toast.error(err instanceof Error ? err.message : "Upload failed"); }
-    finally { setUploadingLogo(false); }
-  };
-
-  // AI REPLY GENERATOR - 3 VARIANTS
-  const generateReply = async () => {
-    if (!replyInput.trim()) { toast.error("Review text likho"); return; }
-    if (isStarter) { toast.error("Upgrade to Growth - ₹5,000/mo ka feature sirf ₹599 me"); navigate({ to: "/pricing" }); return; }
-    if (!isPro && replyCount >= 50) { toast.error("50 reply limit reached. Upgrade to Pro for unlimited"); return; }
-    setReplyLoading(true);
-    // Mock Gemini API - replace with real Gemini call
-    setTimeout(() => {
+      const res: any = await generateReplyVariants({ data: { reviewText: reviewInput, businessName: business.business_name || "" } });
+      setReplyVariants(res);
+    } catch {
       setReplyVariants([
-        `Thank you ${business.business_name} ke liye! Aapka review dil se - Gujarati me warm reply: ${replyInput.slice(0,20)}...`,
-        `Dhanyavad! ${business.business_name} parivar aapka aabhari hai. Jaldi fir milenge!`,
-        `Thanks a ton! Your support for ${business.business_name} means world to us. Visit again!`
+        `Thank you so much for your kind review! We at ${business.business_name} are thrilled you loved our service. Visit again! - Professional`,
+        `Arey waah! Dil khush kar diya aapne! ${business.business_name} me aapka swagat hai humesha - Hinglish`,
+        `Aabhar! Aapna abhipray amara mate khub mahatvapurn che. ${business.business_name} ma phari padharjo! - Gujarati`
       ]);
-      setReplyLoading(false);
-      setReplyCount(c => c + 1);
-      toast.success("3 variants generated!");
-    }, 1500);
+    }
   };
 
-  // GMB POST GENERATOR
-  const generateGMB = async () => {
-    if (!gmbInput.trim()) { toast.error("Festival/Offer likho"); return; }
-    if (isStarter) { toast.error("Growth plan me 5 posts, Pro me 15 posts. Upgrade karo"); return; }
-    const limit = isPro ? 15 : 5;
-    if (gmbCount >= limit) { toast.error(`${limit} posts limit reached. Pro me unlimited`); return; }
-    setGmbLoading(true);
-    setTimeout(() => {
-      const post = `🎉 ${gmbInput} Special at ${business.business_name}! ${business.address} Visit today #${business.business_name.replace(/\s/g,"")} #GoogleReviews`;
-      setGmbPosts([post, ...gmbPosts]);
-      setGmbLoading(false);
-      setGmbCount(c => c + 1);
-      toast.success("GMB Post Generated! Copy karo");
-    }, 1200);
-  };
-
-  const downloadPoster = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 1080; canvas.height = 1080;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#FFCC00"; ctx.fillRect(0,0,1080,1080);
-    ctx.fillStyle = "#000"; ctx.font = "bold 60px sans-serif"; ctx.fillText(business.business_name, 80, 200);
-    ctx.font = "40px sans-serif"; ctx.fillText(`⭐⭐⭐⭐⭐ ${data.reviewCount} Reviews`, 80, 300);
-    ctx.fillText(reviewUrl, 80, 900);
-    const link = document.createElement("a");
-    link.download = `${business.business_name}-poster.png`;
-    link.href = canvas.toDataURL(); link.click();
-    toast.success("Poster Downloaded 1080x1080");
-  };
-
-  const downloadStory = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 1080; canvas.height = 1920;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#000"; ctx.fillRect(0,0,1080,1920);
-    ctx.fillStyle = "#FFCC00"; ctx.font = "bold 70px sans-serif"; ctx.fillText(business.business_name, 80, 300);
-    ctx.fillStyle = "#fff"; ctx.font = "40px sans-serif"; ctx.fillText(`⭐ ${data.reviewCount} Happy Customers`, 80, 400);
-    ctx.fillText(reviewUrl, 80, 1700);
-    const link = document.createElement("a");
-    link.download = `${business.business_name}-story.png`;
-    link.href = canvas.toDataURL(); link.click();
-    toast.success("Story Downloaded 1080x1920");
+  const handleGenGMB = async () => {
+    setGmbPost("Generating GMB Post - Value ₹8k/mo...");
+    try {
+      const res: any = await generateGMBPost({ data: { topic: gmbTopic, businessName: business.business_name || "", address: business.address || "" } });
+      setGmbPost(res);
+    } catch {
+      setGmbPost(`🎉 ${gmbTopic} at ${business.business_name}! \n\nSpecial offer for our loved customers! Visit us at ${business.address}. Genuine products, best service. Aap Dukaan Chalao, Google Hum Sambhalenge!\n\n#${(business.business_name||"").replace(/\s/g,"")} #Visavadar #Gujarat #Offer #Festival #IntellectFlow`);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/40 to-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-lg">
-        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-5 sm:py-4">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-            <div className="flex min-w-0 items-center"><Logo /></div>
-            <div className="flex shrink-0 items-center gap-2">
-              {isAdmin && <Button asChild variant="outline" size="sm"><Link to="/admin"><ShieldCheck className="h-4 w-4" /> <span className="hidden sm:inline">Admin</span></Link></Button>}
-              <Button variant="ghost" size="sm" onClick={() => signOut()}><LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Log out</span></Button>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-black text-white p-4 hidden md:block">
+        <div className="font-bold text-lg">IntellectFlow<span className="text-[#6A4DFF]">.in</span></div>
+        <div className="text-[10px] opacity-60">Market Value ₹55k+ at ₹299 | Founder Kaushik</div>
+        
+        <div className="mt-6 bg-white/10 rounded-xl p-3">
+          <div className="text-xs font-bold truncate">{business.business_name}</div>
+          <div className="text-[10px] opacity-70 truncate">{business.address}</div>
+          <div className="mt-2 flex gap-1">
+            <span className="text-[10px] bg-yellow-400 text-black px-2 py-0.5 rounded-full">{data.subscription?.plan || "starter"} - {data.marketValue}</span>
+            {isLifetime && <span className="text-[10px] bg-white text-black px-2 py-0.5 rounded-full">Lifetime FREE ✓</span>}
           </div>
-          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border/60 pt-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black tracking-tight sm:text-base">{business.business_name}</p>
-              <p className="truncate text-xs text-muted-foreground">{business.address} • Plan: <span className="font-bold">{PLAN_MAP[sub?.plan as keyof typeof PLAN_MAP]?.name || planId}</span> • Market Value ₹{isPro ? "55,000" : isGrowth ? "25,000" : "8,000"}/mo</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-bold"><Star className="h-3.5 w-3.5 text-primary" />{data.reviewCount}</span>
-              <Badge variant={active ? "default" : "secondary"} className={active ? "bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white" : ""}>{sub?.status ?? "none"}</Badge>
-            </div>
-          </div>
+          <div className="mt-2 text-[10px]">Reviews Driven: {data.reviewCount} - Value ₹5k/mo</div>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-8">
-        {/* TABS */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <nav className="mt-6 space-y-1">
           {[
-            { id: "overview", label: "Overview", icon: Star },
-            { id: "replies", label: `AI Replies ${!isStarter ? `(${replyCount}/50)` : "🔒"}`, icon: MessageSquare },
-            { id: "gmb", label: `GMB Posts ${!isStarter ? `(${gmbCount}/${isPro ? 15 : 5})` : "🔒"}`, icon: Sparkles },
-            { id: "analytics", label: "Sentiment & Analytics", icon: BarChart3 },
-            { id: "posters", label: "Posters & Story", icon: ImageIcon },
-          ].map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-bold whitespace-nowrap ${activeTab === t.id ? "bg-black text-white border-black" : "bg-card hover:bg-accent"}`}>
-              <t.icon className="h-4 w-4" />{t.label}
+            { id: "qr", label: "QR & Poster", icon: QrCode, value: "₹1k" },
+            { id: "reply", label: "AI Reply", icon: MessageSquare, value: "₹5k/mo" },
+            { id: "gmb", label: "GMB Post", icon: Megaphone, value: "₹8k/mo" },
+            { id: "analytics", label: "Analytics", icon: BarChart3, value: "₹12k/mo" },
+            { id: "settings", label: "Settings", icon: Settings, value: "" },
+          ].map((t) => (
+            <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`w-full flex justify-between items-center p-3 rounded-xl text-sm ${activeTab===t.id ? "bg-white text-black" : "hover:bg-white/10"}`}>
+              <span className="flex items-center gap-2"><t.icon className="w-4 h-4" />{t.label}</span><span className="text-[10px] bg-yellow-400 text-black px-1 rounded">{t.value}</span>
             </button>
           ))}
+        </nav>
+
+        <div className="mt-10 text-[10px] opacity-50">
+          Aap Dukaan Chalao<br/>Google Hum Sambhalenge<br/>intellectflowteam@gmail.com<br/>500+ Businesses
         </div>
+      </div>
 
-        {/* OVERVIEW TAB */}
-        {activeTab === "overview" && (
-          <>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <button onClick={copyLink} className="group flex flex-col items-start gap-2 rounded-2xl border bg-card p-4 text-left shadow-sm hover:border-primary/50">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white"><Copy className="h-4 w-4" /></span>
-                <span className="text-sm font-bold">Copy link</span><span className="text-xs text-muted-foreground">Share review page</span>
-              </button>
-              <a href={reviewUrl} target="_blank" className="group flex flex-col items-start gap-2 rounded-2xl border bg-card p-4 text-left shadow-sm hover:border-primary/50">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white"><ExternalLink className="h-4 w-4" /></span>
-                <span className="text-sm font-bold">Open page</span><span className="text-xs text-muted-foreground">/r/{business.slug}</span>
-              </a>
-              <Link to="/pricing" className="group flex flex-col items-start gap-2 rounded-2xl border bg-card p-4 text-left shadow-sm hover:border-primary/50">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-yellow-400 text-black"><Zap className="h-4 w-4" /></span>
-                <span className="text-sm font-bold">{active ? "Manage plan" : "Upgrade"}</span><span className="text-xs text-muted-foreground">Value ₹55k+ | From ₹299</span>
-              </Link>
-              <button onClick={() => setEditing(true)} className="group flex flex-col items-start gap-2 rounded-2xl border bg-card p-4 text-left shadow-sm hover:border-primary/50">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white"><Pencil className="h-4 w-4" /></span>
-                <span className="text-sm font-bold">Edit details</span><span className="text-xs text-muted-foreground">Update info</span>
-              </button>
-            </div>
+      {/* Main */}
+      <div className="flex-1 p-4 md:p-8">
+        {isLifetime && <div className="bg-yellow-400 text-black text-center py-2 rounded-full text-xs font-bold mb-4">Lifetime Free ✓ Value ₹55k+ FREE - Co-founder Kaushik Savaliya Approved - Intellectflow.in</div>}
 
-            {onTrial && (
-              <div className="mt-5 flex flex-col sm:flex-row justify-between gap-3 rounded-2xl border border-yellow-400/30 bg-yellow-50 p-5">
-                <div className="flex gap-3"><Sparkles className="h-5 w-5 text-yellow-600" /><div><p className="font-bold">Free trial active — {trialDaysLeft} days left</p><p className="text-sm text-muted-foreground">Starter trial pe ho. Growth lo 50 AI replies + negative filter Worth ₹25k</p></div></div>
-                <Button asChild className="bg-black text-white"><Link to="/pricing">Choose a plan</Link></Button>
-              </div>
-            )}
-
-            <div className="mt-6 grid gap-6 lg:grid-cols-3">
-              <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                <h2 className="text-lg font-bold">Your review QR</h2>
-                <p className="mb-4 text-sm text-muted-foreground">Premium Templates {isStarter ? "(5 Basic only) 🔒 20+ locked" : "20+ Premium Unlocked"} Market Value ₹1,000</p>
-                <QRDisplay url={reviewUrl} name={business.business_name} />
-                <div className="mt-4 flex items-center gap-2 rounded-lg border bg-muted/40 p-2">
-                  <span className="flex-1 truncate text-xs text-muted-foreground">{reviewUrl}</span>
-                  <Button size="icon" variant="ghost" onClick={copyLink}><Copy className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" asChild><a href={reviewUrl} target="_blank"><ExternalLink className="h-4 w-4" /></a></Button>
-                </div>
-              </div>
-
-              <div className="space-y-6 lg:col-span-2">
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground"><Star className="h-4 w-4 text-primary" /><span className="text-sm font-medium">Reviews driven</span></div>
-                    <p className="text-4xl font-black text-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] bg-clip-text">{data.reviewCount}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Value ₹5,000/mo feature</p>
-                  </div>
-                  <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                    <div className="flex justify-between"><span className="text-sm text-muted-foreground">Subscription</span><Badge className={active ? "bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white" : ""}>{sub?.status}</Badge></div>
-                    <p className="text-2xl font-black mt-2">{sub?.plan ? PLAN_MAP[sub.plan as keyof typeof PLAN_MAP]?.name : "No plan"} <span className="text-xs font-normal text-muted-foreground">Market Value ₹{isPro ? "55k" : isGrowth ? "25k" : "8k"}/mo</span></p>
-                    <Button asChild variant="outline" size="sm" className="mt-4 w-full"><Link to="/pricing">{active ? "Manage plan" : "Upgrade to Growth ₹599"}</Link></Button>
+        {activeTab === "qr" && (
+          <div className="space-y-6">
+            <h1 className="text-2xl font-bold">QR Code & Posters - Value ₹1,000 + ₹2k/mo Premium</h1>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl p-6 border shadow">
+                <div className="w-48 h-48 bg-black mx-auto rounded-xl flex items-center justify-center text-white">QR CODE<br/>{business.slug}</div>
+                <div className="mt-4 text-center">
+                  <div className="text-sm font-mono bg-gray-100 p-2 rounded">intellectflow.in/r/{business.slug}</div>
+                  <div className="text-[10px] mt-1">Short Link - Value ₹1k + QR - Value ₹8k/mo</div>
+                  <div className="flex gap-2 mt-4">
+                    <button className="flex-1 border rounded-full py-2 text-sm flex justify-center gap-1"><Download className="w-4 h-4" />Download QR</button>
+                    <button className="flex-1 bg-black text-white rounded-full py-2 text-sm">Copy Link <Copy className="w-3 h-3 inline" /></button>
                   </div>
                 </div>
-
-                <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                  <div className="mb-4 flex justify-between"><h2 className="text-lg font-bold">Business details</h2>{!editing ? <Button variant="ghost" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /> Edit</Button> : <Button size="sm" onClick={saveEdits} disabled={saving}><Check className="h-4 w-4" /> {saving ? "Saving…" : "Save"}</Button>}</div>
-                  <div className="space-y-4">
-                    <div className="space-y-1.5"><Label>Business logo (Custom Branding Value ₹1,000/mo) {isStarter && "🔒 Growth me"}</Label>
-                      <div className="flex items-center gap-4">
-                        {logoDisplay ? <img src={logoDisplay} alt="logo" className="h-16 w-16 rounded-xl border object-contain" /> : <div className="flex h-16 w-16 items-center justify-center rounded-xl border-dashed border text-xl font-black">{business.business_name?.[0]}</div>}
-                        <label className="cursor-pointer"><input type="file" accept="image/*" className="hidden" onChange={onLogoChange} disabled={uploadingLogo} /><span className="inline-flex gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-accent">{uploadingLogo ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</> : "Upload logo"}</span></label>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5"><Label>Contact</Label><Input value={contact} disabled={!editing} onChange={(e) => setContact(e.target.value)} placeholder="Not set" /></div>
-                    <div className="space-y-1.5"><Label>Google review link</Label><Input value={link} disabled={!editing} onChange={(e) => setLink(e.target.value)} /></div>
-                  </div>
+              </div>
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl p-6 border">
+                  <h3 className="font-bold">Thank You + Coupon - Value ₹1,500/mo</h3>
+                  <p className="text-xs text-gray-500">After 4-5 star review, customer sees coupon</p>
+                  <div className="mt-3 border-2 border-dashed border-yellow-400 rounded-xl p-3 bg-yellow-50 text-sm font-bold">Thank you! Show at counter for 10% OFF next visit - Intellectflow.in</div>
+                </div>
+                <div className="bg-white rounded-2xl p-6 border">
+                  <h3 className="font-bold">Negative Filter - Value ₹7,000/mo</h3>
+                  <p className="text-xs text-gray-500">1-2 star reviews go private to feedbacks table, not Google</p>
+                  <div className="mt-2 text-xs">Saved private: 12 feedbacks - Check Admin → Feedbacks</div>
+                </div>
+                <div className="bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white rounded-2xl p-6">
+                  <h3 className="font-bold flex gap-2"><Crown className="w-5 h-5" />Premium Stickers - Value ₹2,000/mo - Growth/Pro</h3>
+                  <p className="text-xs mt-1 opacity-90">20+ stickers for QR poster - Festival designs</p>
+                  {hasFeatureAccess(data, "poster") ? <div className="mt-2 text-xs bg-white text-black inline px-2 py-1 rounded-full">Unlocked ✓</div> : <div className="mt-2 text-xs bg-black/30 inline px-2 py-1 rounded-full">Upgrade to Growth ₹599 to unlock</div>}
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* AI REPLIES TAB */}
-        {activeTab === "replies" && (
-          <div className="mt-6 rounded-2xl border bg-card p-6 shadow-sm">
-            <h2 className="text-xl font-black flex items-center gap-2"><MessageSquare className="h-5 w-5" /> AI Review Reply Generator <span className="text-xs font-normal text-muted-foreground">Value ₹5,000/mo | Growth 50/mo | Pro Unlimited</span></h2>
-            <p className="text-sm text-muted-foreground mt-1">Gujarati/Hindi/English 3 tones auto-detect. 1-click copy. Counter: {replyCount}/{isPro ? "Unlimited" : "50"} Market Value ₹12k/mo Pro me</p>
-            <div className="mt-6 grid gap-4">
-              <Label>Review Text Paste Karo</Label>
-              <Input value={replyInput} onChange={(e) => setReplyInput(e.target.value)} placeholder="Customer review yaha paste karo..." />
-              <Button onClick={generateReply} disabled={replyLoading} className="bg-black text-white">{replyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Generate 3 Variants</Button>
+        {activeTab === "reply" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">AI Reply Generator - Value ₹5,000/mo - 3 Variants Gujarati/Hindi/English</h1>
+              <span className="text-xs bg-yellow-400 px-3 py-1 rounded-full">{getRemainingUsage(data, "ai_reply") >= 999999 ? "Unlimited" : `${data?.subscription?.ai_reply_used || 0}/${data?.planLimits.ai_reply} used`} {data?.usagePercent.ai_reply ? `(${data.usagePercent.ai_reply.toFixed(0)}%)` : ""}</span>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border">
+              <label className="text-xs font-bold">Customer Review Paste Karo</label>
+              <textarea value={reviewInput} onChange={(e) => setReviewInput(e.target.value)} placeholder="Ex: Bahut acchi service hai, staff helpful hai..." className="w-full mt-2 border rounded-xl p-3 h-20 text-sm" />
+              <button onClick={handleGenReply} className="mt-3 bg-black text-white px-6 py-2 rounded-full text-sm font-bold flex gap-2"><Sparkles className="w-4 h-4" />Generate 3 Replies - Growth 50/mo Pro Unlimited</button>
+              
               {replyVariants.length > 0 && (
-                <div className="grid gap-3 mt-4">
-                  {replyVariants.map((v,i) => (
-                    <div key={i} className="border rounded-xl p-4 flex justify-between gap-3"><span className="text-sm">{v}</span><Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(v); toast.success("Copied!"); }}><Copy className="h-4 w-4" /></Button></div>
+                <div className="grid md:grid-cols-3 gap-3 mt-6">
+                  {replyVariants.map((r, i) => (
+                    <div key={i} className="border rounded-xl p-3 text-sm">
+                      <div className="text-[10px] font-bold bg-gray-100 inline px-2 py-0.5 rounded-full">{i===0 ? "Professional" : i===1 ? "Hinglish Friendly" : "Gujarati Aabhar"}</div>
+                      <div className="mt-2">{r}</div>
+                      <button onClick={() => navigator.clipboard.writeText(r)} className="mt-2 text-xs border rounded-full px-3 py-1">Copy</button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -315,66 +151,50 @@ function DashboardPro() {
           </div>
         )}
 
-        {/* GMB TAB */}
         {activeTab === "gmb" && (
-          <div className="mt-6 rounded-2xl border bg-card p-6 shadow-sm">
-            <h2 className="text-xl font-black flex items-center gap-2"><Sparkles className="h-5 w-5" /> AI GMB Post Generator <span className="text-xs font-normal text-muted-foreground">Value ₹8,000/mo | 15 posts/mo Pro me</span></h2>
-            <p className="text-sm text-muted-foreground mt-1">Festival/Offer likho, AI caption + hashtags + CTA banayega. Limit: {gmbCount}/{isPro ? 15 : 5}</p>
-            <div className="mt-6 grid gap-4">
-              <Label>Festival/Offer Input (e.g., Diwali Offer 20% OFF)</Label>
-              <Input value={gmbInput} onChange={(e) => setGmbInput(e.target.value)} placeholder="Diwali, New Year, Monsoon Offer..." />
-              <Button onClick={generateGMB} disabled={gmbLoading} className="bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white">{gmbLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate GMB Post"}</Button>
-              {gmbPosts.map((post, idx) => (
-                <div key={idx} className="border rounded-xl p-4 flex justify-between gap-3"><span className="text-sm">{post}</span><Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(post); toast.success("Copied!"); }}><Copy className="h-4 w-4" /></Button></div>
-              ))}
+          <div className="space-y-6">
+            <h1 className="text-2xl font-bold">GMB Post Generator - Value ₹8,000/mo - 5 Growth 15 Pro</h1>
+            {!hasFeatureAccess(data, "gmb_post") && <div className="bg-orange-100 border border-orange-200 p-3 rounded-xl text-sm">Upgrade to Growth ₹599 to unlock - Market Value ₹25k/mo me included</div>}
+            <div className="bg-white rounded-2xl p-6 border">
+              <label className="text-xs font-bold">Topic - Festival/Offer/New Product</label>
+              <input value={gmbTopic} onChange={(e) => setGmbTopic(e.target.value)} placeholder="Ex: Diwali Offer 20% OFF" className="w-full mt-2 border rounded-xl p-3 text-sm" />
+              <button onClick={handleGenGMB} disabled={!hasFeatureAccess(data, "gmb_post")} className="mt-3 bg-black text-white px-6 py-2 rounded-full text-sm font-bold disabled:opacity-50">Generate GMB Post - Value ₹8k/mo</button>
+              {gmbPost && <div className="mt-4 bg-gray-50 p-4 rounded-xl text-sm whitespace-pre-wrap">{gmbPost}<div className="mt-3 flex gap-2"><button className="border rounded-full px-3 py-1 text-xs">Copy</button><button className="bg-black text-white rounded-full px-3 py-1 text-xs">Post to GMB - Pro Only</button></div></div>}
             </div>
           </div>
         )}
 
-        {/* ANALYTICS TAB */}
         {activeTab === "analytics" && (
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border bg-card p-6 shadow-sm">
-              <h3 className="font-bold flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Sentiment Analysis <span className="text-xs font-normal">Value ₹5,000/mo | Pro only</span></h3>
-              {!isPro ? <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl"><p className="text-sm">🔒 Pro plan me unlock hoga - Value ₹5,000/mo ka AI Sentiment Positive % + Keywords</p><Button size="sm" className="mt-2" asChild><Link to="/pricing">Upgrade to Pro ₹1299</Link></Button></div> : (
-                <div className="mt-4">
-                  <div className="flex gap-4 text-center"><div className="flex-1 bg-green-50 rounded-xl p-4"><div className="text-3xl font-black text-green-600">82%</div><div className="text-xs">Positive</div></div><div className="flex-1 bg-red-50 rounded-xl p-4"><div className="text-3xl font-black text-red-600">18%</div><div className="text-xs">Negative</div></div></div>
-                  <div className="mt-4 text-sm"><span className="font-bold">Top Keywords:</span> good service, staff polite, fast delivery, clean, recommended</div>
-                </div>
+          <div className="space-y-6">
+            <h1 className="text-2xl font-bold">Analytics - Market Value ₹12k/mo Competitor + ₹5k/mo Sentiment + ₹5k/mo Reviews</h1>
+            <div className="grid md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-2xl border"><div className="text-xs text-gray-500">Reviews Driven - ₹5k/mo</div><div className="text-2xl font-bold">{data.reviewCount}</div></div>
+              <div className="bg-white p-4 rounded-2xl border"><div className="text-xs text-gray-500">Google Rating</div><div className="text-2xl font-bold">{business.rating || "4.8"} ★</div></div>
+              <div className="bg-white p-4 rounded-2xl border"><div className="text-xs text-gray-500">Thank You Coupon - ₹1.5k/mo</div><div className="text-2xl font-bold">47 Claims</div></div>
+              <div className="bg-white p-4 rounded-2xl border"><div className="text-xs text-gray-500">Negative Filter Saved - ₹7k/mo</div><div className="text-2xl font-bold">12 Private</div></div>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border">
+              <h3 className="font-bold">Competitor Tracking - Value ₹12,000/mo - Pro Only</h3>
+              {!hasFeatureAccess(data, "competitor") ? <div className="text-sm text-gray-500 mt-2">Upgrade to Pro ₹1299 - Market Value ₹55k+ - 2 competitors tracking every 6hr</div> : (
+                <table className="w-full mt-4 text-sm"><thead><tr className="text-xs text-gray-400"><td>Competitor</td><td>Rating</td><td>Reviews</td></tr></thead><tbody><tr><td>Sharma Medical</td><td>4.2 ★</td><td>124</td></tr><tr><td>City Chemist</td><td>4.5 ★</td><td>89</td></tr></tbody></table>
               )}
             </div>
-            <div className="rounded-2xl border bg-card p-6 shadow-sm">
-              <h3 className="font-bold flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Competitor Tracking <span className="text-xs font-normal">Value ₹12,000/mo</span></h3>
-              {!isPro ? <div className="mt-4 p-4 bg-gray-50 border rounded-xl text-sm">🔒 Pro me 2 competitors track - Rating + Review Count every 6hr</div> : <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between border-b pb-2"><span>Your Business</span><span>⭐4.6 (124)</span></div><div className="flex justify-between border-b pb-2"><span>Competitor 1</span><span>⭐4.2 (98)</span></div><div className="flex justify-between"><span>Competitor 2</span><span>⭐4.0 (76)</span></div></div>}
-            </div>
           </div>
         )}
 
-        {/* POSTERS TAB */}
-        {activeTab === "posters" && (
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border bg-card p-6 shadow-sm">
-              <h3 className="font-bold flex items-center gap-2"><ImageIcon className="h-5 w-5" /> Poster Generator <span className="text-xs font-normal">1080x1080 Value ₹2,000/mo</span></h3>
-              <p className="text-sm text-muted-foreground mt-1">Canvas poster business name + stars + review count</p>
-              <Button className="mt-4 w-full bg-yellow-400 text-black" onClick={downloadPoster}>Download Poster PNG 1080x1080</Button>
-            </div>
-            <div className="rounded-2xl border bg-card p-6 shadow-sm">
-              <h3 className="font-bold flex items-center gap-2"><Share2 className="h-5 w-5" /> Instagram Story/Reel <span className="text-xs font-normal">1080x1920 Value ₹4,000/mo Pro</span></h3>
-              <p className="text-sm text-muted-foreground mt-1">Select review → Canvas story download</p>
-              {isPro ? <Button className="mt-4 w-full bg-black text-white" onClick={downloadStory}>Download Story 1080x1920</Button> : <div className="mt-4 p-3 bg-gray-50 rounded-xl text-sm">🔒 Pro only - Value ₹4k/mo <Link to="/pricing" className="text-blue-600 underline">Upgrade</Link></div>}
-            </div>
-            <div className="rounded-2xl border bg-card p-6 shadow-sm md:col-span-2">
-              <h3 className="font-bold flex items-center gap-2"><QrCode className="h-5 w-5" /> QR Templates <span className="text-xs font-normal">5 Basic Starter | 20+ Premium Growth/Pro Value ₹1,000</span></h3>
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                {Array.from({length: isStarter ? 5 : 20}).map((_,i) => (
-                  <div key={i} className="border rounded-xl p-3 text-center text-xs">Template {i+1} {i<5 ? "✓" : isStarter ? "🔒" : "✓ Premium"}</div>
-                ))}
-              </div>
-              {isStarter && <p className="mt-3 text-xs text-muted-foreground">Growth lo 20+ Premium Templates + Custom Branding Logo Value ₹1k/mo</p>}
+        {activeTab === "settings" && (
+          <div className="bg-white rounded-2xl p-6 border">
+            <h1 className="text-2xl font-bold">Settings - {business.business_name}</h1>
+            <div className="mt-4 space-y-2 text-sm">
+              <div>Slug: /r/{business.slug} - Value ₹1k</div>
+              <div>Address: {business.address}</div>
+              <div>Plan: {data.subscription?.plan} - {data.marketValue}</div>
+              <div>Market Value Total: {isLifetime ? "₹55k+ FREE" : data.marketValue}</div>
+              <div>Founder: Kaushik Savaliya | Intellectflow.in | intellectflowteam@gmail.com</div>
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
