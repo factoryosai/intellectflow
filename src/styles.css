@@ -4,6 +4,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* IntellectFlow PRO - Founder Kaushik Savaliya - Market Value ₹55k+ at ₹299 - Aap Dukaan Chalao Google Hum Sambhalenge */
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -35,6 +37,8 @@
 
   --color-brand-violet: var(--brand-violet);
   --color-brand-blue: var(--brand-blue);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-black: var(--brand-black);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -46,18 +50,28 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Nunito", "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Montserrat", "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, monospace;
 
   --gradient-brand: linear-gradient(135deg, var(--brand-violet), var(--brand-blue));
+  --gradient-brand-yellow: linear-gradient(135deg, var(--brand-yellow), var(--brand-violet));
+  --gradient-market: linear-gradient(135deg, #000000, #6A4DFF);
   --shadow-brand: 0 20px 45px -20px var(--brand-violet-shadow);
+  --shadow-market: 0 20px 45px -20px rgba(106, 77, 255, 0.4);
+  --shadow-glow: 0 0 40px rgba(106, 77, 255, 0.15);
 }
 
 :root {
   --radius: 0.85rem;
 
-  --brand-violet: oklch(0.53 0.245 293);
-  --brand-blue: oklch(0.62 0.19 259);
-  --brand-violet-shadow: oklch(0.53 0.245 293 / 0.45);
+  /* IntellectFlow Brand - #6A4DFF → #2D9CDB + Yellow #FACC15 + Black */
+  --brand-violet: #6A4DFF;
+  --brand-blue: #2D9CDB;
+  --brand-yellow: #FACC15;
+  --brand-black: #000000;
+  --brand-violet-shadow: rgba(106, 77, 255, 0.45);
+  --brand-violet-oklch: oklch(0.53 0.245 293);
+  --brand-blue-oklch: oklch(0.62 0.19 259);
 
   --background: oklch(0.99 0.004 285);
   --foreground: oklch(0.2 0.03 285);
@@ -65,7 +79,7 @@
   --card-foreground: oklch(0.2 0.03 285);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.03 285);
-  --primary: oklch(0.53 0.245 293);
+  --primary: var(--brand-violet);
   --primary-foreground: oklch(0.99 0.004 285);
   --secondary: oklch(0.96 0.01 285);
   --secondary-foreground: oklch(0.3 0.04 285);
@@ -77,16 +91,16 @@
   --destructive-foreground: oklch(0.99 0.004 285);
   --border: oklch(0.91 0.01 285);
   --input: oklch(0.91 0.01 285);
-  --ring: oklch(0.53 0.245 293);
+  --ring: var(--brand-violet);
 
   --sidebar: oklch(0.99 0.004 285);
   --sidebar-foreground: oklch(0.2 0.03 285);
-  --sidebar-primary: oklch(0.53 0.245 293);
+  --sidebar-primary: var(--brand-violet);
   --sidebar-primary-foreground: oklch(0.99 0.004 285);
   --sidebar-accent: oklch(0.95 0.03 285);
   --sidebar-accent-foreground: oklch(0.4 0.1 293);
   --sidebar-border: oklch(0.91 0.01 285);
-  --sidebar-ring: oklch(0.53 0.245 293);
+  --sidebar-ring: var(--brand-violet);
 }
 
 .dark {
@@ -128,8 +142,28 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    /* IntellectFlow PRO - Founder Kaushik Savaliya - Aap Dukaan Chalao Google Hum Sambhalenge */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Scrollbar - IntellectFlow Branding */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--brand-violet), var(--brand-blue));
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a3de6, #2490c7);
   }
 }
+
+/* IntellectFlow PRO Utilities - Market Value ₹55k+ Design System */
 
 @utility text-gradient-brand {
   background: var(--gradient-brand);
@@ -142,3 +176,141 @@
 @utility bg-gradient-brand {
   background-image: var(--gradient-brand);
 }
+
+@utility bg-gradient-market {
+  background-image: var(--gradient-market);
+}
+
+@utility text-gradient-market {
+  background: var(--gradient-market);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+@utility shadow-brand {
+  box-shadow: var(--shadow-brand);
+}
+
+@utility shadow-market {
+  box-shadow: var(--shadow-market);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+/* Market Value Badge - ₹1k, ₹3k/mo, ₹1.5k/mo, ₹7k/mo etc */
+@utility badge-market {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-400 text-black;
+}
+
+@utility badge-market-free {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold bg-black text-white;
+}
+
+@utility badge-lifetime {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-orange-400 text-black shadow-glow;
+}
+
+/* Founder Badge - Kaushik Savaliya */
+@utility badge-founder {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-black text-white;
+}
+
+/* Card PRO - Market Value ₹55k+ */
+@utility card-pro {
+  @apply bg-white rounded-[24px] border shadow-sm hover:shadow-market transition-all duration-300;
+}
+
+@utility card-market {
+  @apply bg-gradient-to-br from-purple-50 to-blue-50 rounded-[24px] border border-purple-100 shadow-glow;
+}
+
+/* Button PRO */
+@utility btn-pro {
+  @apply bg-black text-white rounded-full px-6 py-3 font-bold hover:bg-gray-900 transition-colors shadow-brand;
+}
+
+@utility btn-gradient {
+  @apply bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white rounded-full px-6 py-3 font-bold hover:opacity-90 transition-opacity shadow-brand;
+}
+
+@utility btn-market {
+  @apply bg-yellow-400 text-black rounded-full px-4 py-2 text-xs font-bold hover:bg-yellow-300 transition-colors;
+}
+
+/* Animations - IntellectFlow PRO */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(106, 77, 255, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(106, 77, 255, 0.5); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@utility animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@utility animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+@utility animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* QR Code Pattern */
+@utility qr-pattern {
+  background-image: 
+    linear-gradient(45deg, #000 25%, transparent 25%),
+    linear-gradient(-45deg, #000 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #000 75%),
+    linear-gradient(-45deg, transparent 75%, #000 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Hide scrollbar but keep functionality */
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Focus visible - Brand */
+@utility focus-brand {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6A4DFF] focus-visible:ring-offset-2;
+}
+
+/* Prose for AI generated content - GMB Post, Reply etc - Value ₹8k/mo + ₹5k/mo */
+@utility prose-pro {
+  @apply text-sm leading-relaxed;
+  & strong {
+    @apply font-bold text-foreground;
+  }
+  & em {
+    @apply italic;
+  }
+  & ul {
+    @apply list-disc pl-4 space-y-1;
+  }
+  & ol {
+    @apply list-decimal pl-4 space-y-1;
+  }
+}
+
+/* Founder: Kaushik Savaliya - Visavadar Gujarat 362130 - intellectflowteam@gmail.com - Market Value ₹55k+ at ₹299 - Aap Dukaan Chalao Google Hum Sambhalenge - 500+ Businesses */
