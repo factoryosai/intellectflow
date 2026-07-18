@@ -1,215 +1,162 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
-import { Search, MapPin, Loader2, Check, Crown, Zap, Star, Sparkles } from "lucide-react";
-import { toast } from "sonner";
-import { Logo } from "@/components/Logo";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { searchPlaces, getPlaceDetails } from "@/lib/places.functions";
 import { useAuth } from "@/lib/auth";
-import { useBusiness } from "@/lib/useBusiness";
-import { searchPlaces, getPlaceDetails, type PlacePrediction } from "@/lib/places.functions";
+import { Search, MapPin, Star, Phone, Globe, Sparkles, QrCode, Gift, Shield } from "lucide-react";
 
 export const Route = createFileRoute("/onboarding")({
-  component: OnboardingPro,
+  component: OnboardingPage,
 });
 
-function OnboardingPro() {
+function OnboardingPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { session, loading } = useAuth();
-  const { data, refetch } = useBusiness();
-  const doSearch = useServerFn(searchPlaces);
-  const doDetails = useServerFn(getPlaceDetails);
-
   const [query, setQuery] = useState("");
-  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [selected, setSelected] = useState<{
-    business_name: string;
-    place_id: string;
-    address: string;
-    location_lat: number | null;
-    location_lng: number | null;
-    website: string | null;
-    rating: number | null;
-    user_ratings_total: number | null;
-    logo_url: string | null;
-  } | null>(null);
+  const [predictions, setPredictions] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [contact, setContact] = useState("");
   const [description, setDescription] = useState("");
-  const [reviewLink, setReviewLink] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [customLink, setCustomLink] = useState("");
 
-  useEffect(() => {
-    if (!loading && !session) navigate({ to: "/auth" });
-  }, [loading, session, navigate]);
-
-  useEffect(() => {
-    if (query.trim().length < 3) { setPredictions([]); return; }
-    const t = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await doSearch({ data: { query } });
-        setPredictions(res.predictions);
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Search failed");
-      } finally { setSearching(false); }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [query, doSearch]);
-
-  const pick = async (p: PlacePrediction) => {
+  const handleSearch = async () => {
+    if (!query.trim()) return;
+    setLoading(true);
     try {
-      const { details } = await doDetails({ data: { placeId: p.placeId } });
-      setSelected({
-        business_name: details.name,
-        place_id: details.placeId,
-        address: details.address,
-        location_lat: details.lat,
-        location_lng: details.lng,
-        website: details.website || null,
-        rating: details.rating,
-        user_ratings_total: details.userRatingsTotal,
-        logo_url: details.logoUrl,
-      });
-      setReviewLink(details.googleReviewLink);
-      if (details.phone) setContact(details.phone);
-      setPredictions([]);
-      setQuery(details.name);
-      toast.success(`Selected ${details.name} - Market Value ₹8k+ QR + Review Page`);
+      const res = await searchPlaces({ data: { query } });
+      setPredictions(res.predictions);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not load details");
+      alert("Search failed - Add GOOGLE_PLACES_API_KEY in .env - Value ₹1k feature");
     }
+    setLoading(false);
   };
 
-  const save = async () => {
-    if (!selected) return toast.error("Please search and select your business");
-    if (!reviewLink.trim()) return toast.error("Please paste your Google review link");
-    if (!data?.business) return toast.error("Setup not ready, please refresh");
-    setSaving(true);
+  const handleSelect = async (placeId: string) => {
+    setLoading(true);
     try {
-      const { error } = await supabase.from("businesses").update({
-        business_name: selected.business_name,
-        place_id: selected.place_id,
-        address: selected.address,
-        location_lat: selected.location_lat,
-        location_lng: selected.location_lng,
-        contact_number: contact || null,
-        google_review_link: reviewLink.trim(),
-        website: selected.website,
-        description: description || null,
-        logo_url: selected.logo_url,
-        rating: selected.rating,
-        user_ratings_total: selected.user_ratings_total,
-      }).eq("id", data.business.id);
-      if (error) throw error;
-      await refetch();
-      toast.success("Business connected! QR + Review Page + AI Writer Enabled - Value ₹8k/mo");
-      navigate({ to: "/dashboard" });
+      const res = await getPlaceDetails({ data: { placeId } });
+      setSelected(res.details);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save");
-    } finally { setSaving(false); }
+      alert("Details failed");
+    }
+    setLoading(false);
+  };
+
+  const handleCreate = async () => {
+    if (!selected) return alert("Business select karo");
+    if (!user) return alert("Login karo");
+    
+    const slug = selected.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString().slice(-4);
+    
+    const { data, error } = await supabase.from("businesses").insert({
+      user_id: user.id,
+      business_name: selected.name,
+      place_id: selected.placeId,
+      address: selected.address,
+      location_lat: selected.lat,
+      location_lng: selected.lng,
+      contact_number: contact,
+      google_review_link: customLink || selected.googleReviewLink,
+      slug,
+      website: selected.website,
+      description: description || selected.description,
+      logo_url: selected.logoUrl,
+      rating: selected.rating,
+      user_ratings_total: selected.userRatingsTotal,
+    } as any).select().single();
+
+    if (error) return alert(error.message + " - Run SQL: ALTER TABLE businesses ADD COLUMN is_lifetime_free BOOLEAN DEFAULT FALSE");
+
+    // Create free starter subscription
+    await supabase.from("subscriptions").insert({
+      business_id: data.id,
+      plan: "starter",
+      status: "active",
+      current_period_end: new Date(Date.now() + 30*24*3600*1000).toISOString(),
+    } as any);
+
+    alert("Business created! Value ₹8k/mo QR FREE - Aap Dukaan Chalao Google Hum Sambhalenge");
+    navigate({ to: "/dashboard" });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/40 to-white">
-      <div className="mx-auto w-full max-w-2xl px-5 py-6">
-        <div className="flex items-center justify-between">
-          <Logo />
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] bg-yellow-400 text-black px-2 py-1 rounded-full font-black">Market Value ₹55k+</span>
-            <Link to="/pricing" className="text-xs underline">Pricing</Link>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
+        <div className="text-center mb-8">
+          <div className="inline-flex bg-black text-white text-[10px] px-3 py-1 rounded-full">IntellectFlow.in | Founder Kaushik Savaliya | Market Value ₹55k+ at ₹299</div>
+          <h1 className="text-3xl font-bold mt-4">Apna Business Connect Karo</h1>
+          <p className="text-gray-500 mt-2">Google Places se search karo - 1 min me QR + AI Writer ready - Value ₹8,000/mo FREE</p>
         </div>
 
-        <div className="mt-6 rounded-2xl bg-black text-white p-4 flex gap-3 items-start border-2 border-yellow-400">
-          <Crown className="h-5 w-5 text-yellow-400 mt-0.5" />
-          <div className="text-sm">
-            <div className="font-black">Aap Dukaan Chalao, Google Hum Sambhalenge. - Intellectflow.in</div>
-            <div className="text-xs text-gray-400 mt-1">Co-founder Kaushik Savaliya | 500+ Businesses | Market Value ₹55k+ Features at ₹299 | Founder Photo + Logo Gradient #6A4DFF→#2D9CDB</div>
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-2xl border bg-card p-6 shadow-sm md:p-8">
-          <h1 className="text-2xl font-black tracking-tight">Connect your business <span className="text-sm font-normal text-muted-foreground">Value ₹8k/mo QR + Page</span></h1>
-          <p className="mt-1 text-sm text-muted-foreground">Find your business, add details, we'll generate QR code + /r/slug page + AI Writer + Posters - Value ₹25k/mo in Growth</p>
-
-          <div className="mt-6 grid grid-cols-3 gap-2 text-[11px]">
-            <div className="border rounded-xl p-3 text-center"><div className="font-black">QR + Link</div><div className="text-muted-foreground">Value ₹1k</div></div>
-            <div className="border rounded-xl p-3 text-center"><div className="font-black">AI Writer</div><div className="text-muted-foreground">Value ₹3k/mo</div></div>
-            <div className="border rounded-xl p-3 text-center"><div className="font-black">Thank You + Coupon</div><div className="text-muted-foreground">Value ₹1.5k/mo</div></div>
-          </div>
-
-          <div className="mt-6 space-y-5">
-            <div className="space-y-1.5">
-              <Label>Search your business on Google (Place ID) <span className="text-xs text-muted-foreground">Value ₹1k</span></Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-9" placeholder="e.g. Cafe Aroma, Mumbai - Type 3+ letters" value={query} onChange={(e) => { setQuery(e.target.value); setSelected(null); }} />
-                {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
-              </div>
-              {predictions.length > 0 && (
-                <div className="mt-1 overflow-hidden rounded-xl border bg-popover shadow-lg">
-                  {predictions.map((p) => (
-                    <button key={p.placeId} onClick={() => pick(p)} className="flex w-full items-start gap-2 border-b px-4 py-3 text-left last:border-0 hover:bg-accent">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span><span className="block text-sm font-semibold">{p.primary}</span><span className="block text-xs text-muted-foreground">{p.secondary}</span></span>
-                    </button>
-                  ))}
-                </div>
-              )}
+        <div className="bg-white rounded-2xl shadow p-6 border">
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key==="Enter" && handleSearch()} placeholder="Business name likho - ex: Shree Ram Medical Visavadar" className="w-full border rounded-full pl-10 pr-4 py-3 text-sm" />
             </div>
+            <button onClick={handleSearch} disabled={loading} className="bg-black text-white px-6 rounded-full font-bold text-sm disabled:opacity-50">{loading ? "..." : "Search - ₹1k"}</button>
+          </div>
 
-            {selected && (
-              <div className="flex items-start gap-3 rounded-xl border-2 border-yellow-400 bg-yellow-50 p-3 text-sm">
-                {selected.logo_url ? <img src={selected.logo_url} alt="logo" className="h-10 w-10 rounded-lg object-contain" /> : <Check className="mt-0.5 h-4 w-4 text-primary" />}
-                <div>
-                  <p className="font-bold">{selected.business_name} <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full ml-2">Selected ✓ Value ₹8k</span></p>
-                  <p className="text-xs text-muted-foreground">{selected.address}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                    {selected.rating != null && <span>★ {selected.rating} ({selected.user_ratings_total ?? 0})</span>}
-                    {selected.website && <a href={selected.website} target="_blank" className="text-primary hover:underline">Website</a>}
-                    <span>Place ID: {selected.place_id.slice(0,20)}...</span>
+          {predictions.length > 0 && !selected && (
+            <div className="mt-4 border rounded-xl overflow-hidden">
+              {predictions.map((p) => (
+                <button key={p.placeId} onClick={() => handleSelect(p.placeId)} className="w-full text-left p-3 hover:bg-gray-50 border-b last:border-0 flex justify-between">
+                  <div><div className="font-bold text-sm">{p.primary}</div><div className="text-xs text-gray-500">{p.secondary}</div></div>
+                  <div className="text-[10px] bg-yellow-400 px-2 py-1 rounded-full h-fit">Select - ₹1k</div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selected && (
+            <div className="mt-6">
+              <div className="border-2 border-yellow-400 rounded-xl p-4 bg-yellow-50 relative">
+                <div className="absolute -top-2 -right-2 bg-black text-white text-[10px] px-2 py-1 rounded-full">Selected ✓ Value ₹8k</div>
+                <div className="flex gap-3">
+                  {selected.logoUrl ? <img src={selected.logoUrl} className="w-12 h-12 rounded-full" /> : <div className="w-12 h-12 bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] rounded-full flex items-center justify-center text-white">🏪</div>}
+                  <div className="flex-1">
+                    <div className="font-bold">{selected.name}</div>
+                    <div className="text-xs text-gray-600 flex items-center gap-1"><MapPin className="w-3 h-3" />{selected.address}</div>
+                    <div className="flex gap-3 mt-1 text-xs">
+                      {selected.rating && <span className="flex items-center gap-1"><Star className="w-3 h-3 text-yellow-400" />{selected.rating} ({selected.userRatingsTotal})</span>}
+                      {selected.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{selected.phone}</span>}
+                      {selected.website && <span className="flex items-center gap-1"><Globe className="w-3 h-3" />Website</span>}
+                    </div>
+                    {selected.description && <div className="text-xs mt-2 bg-white p-2 rounded">AI Writer + GMB Post ke liye: {selected.description} - Value ₹8k/mo</div>}
                   </div>
                 </div>
               </div>
-            )}
 
-            <div className="space-y-1.5">
-              <Label htmlFor="contact">Contact number (For WhatsApp Reminder Value ₹3k/mo)</Label>
-              <Input id="contact" placeholder="+91 98765 43210" value={contact} onChange={(e) => setContact(e.target.value)} />
-              <p className="text-[11px] text-muted-foreground">Growth/Pro me 24hr WhatsApp auto-reminder if no review - Value ₹3k/mo</p>
+              <div className="grid md:grid-cols-2 gap-4 mt-6">
+                <div>
+                  <label className="text-xs font-bold">Contact Number - WhatsApp Reminder Value ₹3k/mo</label>
+                  <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="98765..." className="w-full mt-1 border rounded-xl p-3 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold">Google Review Link (Custom) - Value ₹500</label>
+                  <input value={customLink} onChange={(e) => setCustomLink(e.target.value)} placeholder={selected.googleReviewLink} className="w-full mt-1 border rounded-xl p-3 text-sm" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-bold">Business Description - AI Writer + GMB Post Value ₹8k/mo ke liye</label>
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex: Best medical store in Visavadar, 10 years experience, genuine medicines..." className="w-full mt-1 border rounded-xl p-3 text-sm h-20" defaultValue={selected.description || ""} />
+                </div>
+              </div>
+
+              <div className="bg-black text-white rounded-xl p-4 mt-6">
+                <div className="font-bold text-sm">What You Get - Market Value ₹55k+ FREE in Lifetime</div>
+                <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                  <div className="flex gap-1"><QrCode className="w-4 h-4" />QR + Short Link /r/slug - ₹1k</div>
+                  <div className="flex gap-1"><Sparkles className="w-4 h-4" />AI Review Writer 4 - ₹3k/mo</div>
+                  <div className="flex gap-1"><Gift className="w-4 h-4" />Thank You + Coupon - ₹1.5k/mo</div>
+                  <div className="flex gap-1"><Shield className="w-4 h-4" />Negative Filter 1-2★ private - ₹7k/mo</div>
+                </div>
+              </div>
+
+              <button onClick={handleCreate} className="w-full mt-6 bg-gradient-to-r from-[#6A4DFF] to-[#2D9CDB] text-white rounded-full py-4 font-bold">Connect & Generate QR - Value ₹8,000/mo FREE → Dashboard</button>
+              <div className="text-center text-[10px] text-gray-400 mt-2">Aap Dukaan Chalao, Google Hum Sambhalenge | Founder Kaushik Savaliya | Intellectflow.in</div>
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="description">Business description (AI Writer + GMB Post uses this)</Label>
-              <Input id="description" placeholder="Best cafe in Mumbai, known for coffee - AI uses this for GMB posts Value ₹8k/mo" value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="link">Your Google review link (Direct Link Value ₹500) <span className="text-red-500">*</span></Label>
-              <Input id="link" placeholder="https://g.page/r/…/review or https://search.google.com/local/writereview?placeid=..." value={reviewLink} onChange={(e) => setReviewLink(e.target.value)} />
-              <p className="text-xs text-muted-foreground">Paste direct link customers use to leave Google review. We also generate /r/{selected?.place_id ? "your-slug" : "PLACE_ID"} page with AI Writer + Coupon Value ₹1.5k/mo + Negative Filter Value ₹7k/mo</p>
-            </div>
-
-            <div className="rounded-xl bg-muted p-4 text-xs space-y-1">
-              <div className="font-bold flex items-center gap-2"><Zap className="h-4 w-4" /> What you get after Connect:</div>
-              <div>✓ Smart QR Code + Short Link /r/slug - Value ₹1k</div>
-              <div>✓ AI Review Writer Unlimited - Value ₹3k/mo</div>
-              <div>✓ Thank You Page + Coupon + Negative Filter Private Form - Value ₹8.5k/mo</div>
-              <div>✓ Dashboard: Reviews counter + Analytics + Poster 1080x1080 - Value ₹2k/mo</div>
-              <div>✓ Upgrade to Growth ₹599: AI Reply 50/mo + WhatsApp Reminder + Premium Stickers 20+ + Poster - Value ₹25k/mo</div>
-              <div>✓ Upgrade to Pro ₹1299: Unlimited Reply + GMB 15 posts + Sentiment + Competitor + 1-Page Website FREE - Value ₹55k+</div>
-            </div>
-
-            <Button className="w-full bg-black text-white hover:bg-black/90 py-6 text-base font-black" size="lg" onClick={save} disabled={saving}>
-              {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Star className="h-5 w-5" /> Connect business & generate QR - Value ₹8k/mo FREE</>}
-            </Button>
-
-            <div className="text-center text-[11px] text-muted-foreground">By connecting, you agree to 7-day free trial. Co-founder Kaushik Savaliya | Intellectflow.in | intellectflowteam@gmail.com | Founder Photo + Logo Gradient #6A4DFF→#2D9CDB | Legal: Privacy, Terms, Refund</div>
-          </div>
+          )}
         </div>
       </div>
     </div>
